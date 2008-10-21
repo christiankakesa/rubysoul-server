@@ -5,7 +5,7 @@
 
 RubySoul Server is a ruby NetSoul client, it's only for ident.
 Complete your "config.yml" with your "login_l" and "yourpass".
-Run PATH_TO_RUBYSOUL_SERVER/rs_server.rb like this : "rs_server.rb" or "./rs_server.rb" or "ruby rs_server.rb", depending on your plateforme.
+Run PATH_TO_RUBYSOUL_SERVER/rs_server.rb like this : "rs_server.rb" or "./rs_server.rb" or "ruby rs_server.rb", depending on your plateforme. You can run RubySoul-Server with with "-l" option. All log data are stored in "logfile.log".
 
 [Example of "config.yml"]
 :login: your login

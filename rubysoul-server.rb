@@ -17,7 +17,7 @@ RS_VERSION = "0.5.50B"
 RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 
-class RubySoul
+class RubySoulServer
   attr_accessor :socket, :logger
   
   def initialize
@@ -32,8 +32,8 @@ class RubySoul
     @location = nil
     @connect = false
     @state = "server"
-    @data = GetConfig()
-    @parseThread = nil
+    @data = get_config()
+    @parse_thread = nil
     @mutex = Mutex.new
     @timestamp_thread = nil
     @server_timestamp = nil
@@ -41,27 +41,28 @@ class RubySoul
     begin
       ping_res = Ping.pingecho(@data[:server][:host], 1, @data[:server][:port])
     rescue
-      puts '/!\ Netsoul server is not reacheable...'
+      puts '[#{Time.now.to_s}] /!\ Netsoul server is not reacheable...'
       retry
     end
-    Auth(@data[:login], @data[:pass], RS_APP_NAME + " " + RS_VERSION)
-    @parseThread = Thread.new do
+    auth(@data[:login], @data[:pass], RS_APP_NAME + " " + RS_VERSION)
+    @parse_thread = Thread.new do
       @mutex.synchronize do
       	while (true)
-          ParseCMD()
+          parse_cmd()
         end
       end
     end
-    PrintInfo()
-    puts "[" + Time.now.to_s + "] Started..."
-    trap("SIGINT") { Exit() }
-    trap("SIGTERM") { Exit() }
-    @parseThread.join()
+    print_info()
+    puts "[#{Time.now.to_s}] #{RS_APP_NAME} #{RS_VERSION} Started..."
+    at_exit {  if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
+    trap("SIGINT") { exit }
+    trap("SIGTERM") { exit }
+    @parse_thread.join()
   end
   
-  def Auth(login, pass, user_ag)
-    if not (Connect(login, pass, user_ag))
-      puts "Can't connect to the NetSoul server..."
+  def auth(login, pass, user_ag)
+    if not (connect(login, pass, user_ag))
+      puts "[#{Time.now.to_s}] Can't connect to the NetSoul server..."
       return false
     else
       @connect = true
@@ -69,14 +70,14 @@ class RubySoul
     end
   end
   
-  def Connect(login, pass, user_ag)
+  def connect(login, pass, user_ag)
     if not (@socket)
       @socket = TCPSocket.new(@data[:server][:host], @data[:server][:port])
     end
-    if (!@logger and (ARGV[0] == "debug"))
+    if (!@logger and (ARGV[0] == "-l"))
       @logger = Logger.new('logfile.log', 7, 2048000)
     end
-    buff = SockGet()
+    buff = sock_get()
     cmd, @socket_num, md5_hash, @client_host, @client_port, @server_timestamp = buff.split
     @server_timestamp_diff = Time.now.to_i - @server_timestamp.to_i
     reply_hash = Digest::MD5.hexdigest("%s-%s/%s%s" % [md5_hash, @client_host, @client_port, pass])
@@ -97,33 +98,33 @@ class RubySoul
       @cmd = "user_cmd"
       @location = @data[:location]
     end    
-    SockSend("auth_ag ext_user none none")
-    ParseCMD()    
-    SockSend("ext_user_log " + login + " " + reply_hash + " " + Escape(@location) + " " + Escape(user_ag))
-    ParseCMD()
-    SockSend("user_cmd attach")
-    SockSend("user_cmd state " + @state + ":" +  GetServerTimestamp().to_s)
+    sock_send("auth_ag ext_user none none")
+    parse_cmd()    
+    sock_send("ext_user_log " + login + " " + reply_hash + " " + escape(@location) + " " + escape(user_ag))
+    parse_cmd()
+    sock_send("user_cmd attach")
+    sock_send("user_cmd state " + @state + ":" +  get_server_timestamp().to_s)
     return true
   end
   
-  def ParseCMD
-    buff = SockGet()
+  def parse_cmd
+    buff = sock_get()
     if not (buff.to_s.length > 0)
-      SockClose()
+      sock_close()
       return ""
     end
     cmd = buff.match(/^(\w+)/)[1]
     case cmd.to_s
     when "ping"
-      Ping(buff.to_s)
+      ping(buff.to_s)
     when "rep"
-      Rep(buff)
+      rep(buff)
     else
       return ""
     end
   end
   
-  def Rep(cmd)
+  def rep(cmd)
     msg_num, msg = cmd.match(/^\w+\ (\d{3})\ \-\-\ (.*)/)[1..2]
     case msg_num.to_s
     when "001"
@@ -137,23 +138,23 @@ class RubySoul
       return true
     when "033"
       ## Login or password incorrect
-      puts "Login or password incorrect"
-      Exit()
+      puts "[#{Time.now.to_s}] Login or password incorrect"
+      exit
       return false
     end
     return true
   end
   
-  def Ping(cmd)
-    SockSend(cmd.to_s)
+  def ping(cmd)
+    sock_send(cmd.to_s)
   end
   
-  def GetConfig(filename = File.dirname(__FILE__) + "/config.yml")
+  def get_config(filename = File.dirname(__FILE__) + "/config.yml")
     config = YAML::load(File.open(filename));
     return config
   end
   
-  def SockSend(string)
+  def sock_send(string)
     if (@socket)
       @socket.puts string
       if (@logger)
@@ -162,7 +163,7 @@ class RubySoul
     end
   end
   
-  def SockGet
+  def sock_get
     if (@socket)
       response = @socket.gets.to_s.chomp
       if (@logger)
@@ -172,44 +173,44 @@ class RubySoul
     end
   end
   
-  def SockClose
+  def sock_close
     if (@socket )
       @socket.puts "exit"
       @socket.close
     end
   end
-  
-  def Exit
-    at_exit {  if (@socket ); SockClose() end; if (@logger); @logger.close; end; }
+=begin
+  def exit
+    at_exit {  if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
     exit
   end
-  
-  def Escape(str)
+=end
+  def escape(str)
     str = URI.escape(str)
     res = URI.escape(str, "\ :'@~\[\]&()=*$!;,\+\/\?")
     return res
   end
   
-  def PrintInfo
+  def print_info
     puts '*************************************************'
     puts '* ' + RS_APP_NAME + ' V' + RS_VERSION + '                      *'
-    puts "* #{RS_AUTHOR} <#{RS_AUTHOR_EMAIL}> *"
+    puts '* ' + RS_AUTHOR + '<' + RS_AUTHOR_EMAIL + '> *'
     puts '* kakesa_c - ETNA_2008                          *'
     puts '*************************************************'
   end
 
-  def GetServerTimestamp
+  def get_server_timestamp
     return Time.now.to_i - @server_timestamp_diff.to_i
   end
 end
 
 begin
-  rss = RubySoul.new
+  rss = RubySoulServer.new
 rescue IOError, Errno::ENETRESET, Errno::ESHUTDOWN, Errno::ETIMEDOUT, Errno::ECONNRESET, Errno::ENETDOWN, Errno::EINVAL, Errno::ECONNABORTED, Errno::EIO, Errno::ECONNREFUSED, Errno::ENETUNREACH, Errno::EFAULT, Errno::EHOSTUNREACH, Errno::EINTR, Errno::EBADF
-  puts "Error: #{$!}"
+  puts "[#{Time.now.to_s}] Error: #{$!}"
   retry
 rescue
-  puts "Unknown error, you can send email to the author at : #{RS_AUTHOR_EMAIL}"
-  puts "Error: #{$!}"
+  puts "[#{Time.now.to_s}] Unknown error, you can send email to the author at : #{RS_AUTHOR_EMAIL}"
+  puts "[#{Time.now.to_s}] Error: #{$!}"
   exit
 end
