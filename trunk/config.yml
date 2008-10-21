@@ -1,10 +1,13 @@
 #--- | Application config
-:login: kakesa_c
-:pass: 'password'
-:location: 'RubySoul-Server'
+:login: login_l
+:socks_pass: ''
+#:unix_password: ''
+:location: RubySoul-Server
 :server:
   :host: ns-server.epita.fr
   :port: 4242
+#  :kerberos_servicename: 
+#  :kerberos_realm:
 :iptable:
   lab-cisco-mid-sr: 10.251.
   etna: 10.245.
