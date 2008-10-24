@@ -3,11 +3,13 @@
 :socks_password: ''
 :unix_password: '' #--- | Only if you have build lib/kerberos/NsToken, if you don't must be empty.
 :user_group: etna_2008
-:location: RubySoul-Server
 :system: Unix
+:location: RubySoul-Server
+
 :server:
   :host: ns-server.epita.fr
   :port: 4242
+
 :iptable:
   lab-cisco-mid-sr: 10.251.
   etna: 10.245.
