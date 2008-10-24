@@ -37,10 +37,11 @@ static VALUE k_get_token(VALUE self, VALUE login, VALUE password)
 	token_base64 = base64_encode((const unsigned char*)data->otoken.value, data->otoken.length, &elen);
 	rb_iv_set(self, "@login", login);
 	rb_iv_set(self, "@password", password);
-	rb_iv_set(self, "@token", rb_str_new(token, strlen(token)-1));
-	rb_iv_set(self, "@token_base64", rb_str_new(token_base64, strlen(token_base64)-1));
+	rb_iv_set(self, "@token", rb_str_new2(token));
+	rb_iv_set(self, "@token_base64", rb_str_new2(token_base64));
 	free(token);
 	free(token_base64);
+	free(data);
 	return Qtrue;
 }
 
