@@ -13,7 +13,7 @@ rescue LoadError
 end
 
 RS_APP_NAME = "RubySoul Server"
-RS_VERSION = "0.6.00B"
+RS_VERSION = "0.6.00"
 RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 
@@ -53,7 +53,6 @@ class RubySoulServer
         end
       end
     end
-    puts "Available parameters are \"help\", \"info\"."
     puts "[#{Time.now.to_s}] #{RS_APP_NAME} #{RS_VERSION} Started..."
     at_exit {  if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
     trap("SIGINT") { exit }
@@ -98,10 +97,19 @@ class RubySoulServer
     sock_send("auth_ag ext_user none -")
     parse_cmd()
     if @data[:unix_password].length > 0
-      require 'lib/kerberos/NsToken'
+      begin
+        require 'lib/kerberos/NsToken'
+      rescue LoadError
+        puts "Error: #{$!}"
+        puts "Build the \"NsToken\" ruby/c extension if you don't.\nSomething like this : \"cd ./lib/kerberos && ruby extconf.rb && make\""
+        exit
+      end
       tk = NsToken.new
-      tk.get_token(@data[:login], @data[:unix_password])
-      sock_send("ext_user_klog " + tk.token_base64.gsub( /\s/, "" ) + " #{escape(@data[:system])} #{escape(@location)}  #{escape(@data[:user_group])} #{escape(user_ag)}")
+      if not tk.get_token(@data[:login], @data[:unix_password])
+        puts "Impossible to retrieve the kerberos token"
+        exit
+      end
+      sock_send("ext_user_klog " + tk.token_base64 + " #{escape(@data[:system])} #{escape(@location)}  #{escape(@data[:user_group])} #{escape(user_ag)}")
     else
       reply_hash = Digest::MD5.hexdigest("%s-%s/%s%s" % [md5_hash, @client_host, @client_port, pass])
       sock_send("ext_user_log " + login + " " + reply_hash + " " + escape(@location) + " " + escape(user_ag))
@@ -186,12 +194,7 @@ class RubySoulServer
       @socket.close
     end
   end
-=begin
-  def exit
-    at_exit {  if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
-    exit
-  end
-=end
+
   def escape(str)
     str = URI.escape(str)
     res = URI.escape(str, "\ :'@~\[\]&()=*$!;,\+\/\?")
