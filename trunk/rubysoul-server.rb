@@ -13,7 +13,7 @@ rescue LoadError
 end
 
 RS_APP_NAME = "RubySoul Server"
-RS_VERSION = "0.5.50B"
+RS_VERSION = "0.6.00B"
 RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 
@@ -38,13 +38,14 @@ class RubySoulServer
     @timestamp_thread = nil
     @server_timestamp = nil
     @server_timestamp_diff = 0
+    get_opt()
     begin
       ping_res = Ping.pingecho(@data[:server][:host], 1, @data[:server][:port])
     rescue
       puts '[#{Time.now.to_s}] /!\ Netsoul server is not reacheable...'
       retry
     end
-    auth(@data[:login], @data[:pass], RS_APP_NAME + " " + RS_VERSION)
+    auth()
     @parse_thread = Thread.new do
       @mutex.synchronize do
       	while (true)
@@ -52,7 +53,7 @@ class RubySoulServer
         end
       end
     end
-    print_info()
+    puts "Available parameters are \"help\", \"info\"."
     puts "[#{Time.now.to_s}] #{RS_APP_NAME} #{RS_VERSION} Started..."
     at_exit {  if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
     trap("SIGINT") { exit }
@@ -60,8 +61,8 @@ class RubySoulServer
     @parse_thread.join()
   end
   
-  def auth(login, pass, user_ag)
-    if not (connect(login, pass, user_ag))
+  def auth
+    if not (connect(@data[:login], @data[:socks_password], RS_APP_NAME + " " + RS_VERSION))
       puts "[#{Time.now.to_s}] Can't connect to the NetSoul server..."
       return false
     else
@@ -74,13 +75,9 @@ class RubySoulServer
     if not (@socket)
       @socket = TCPSocket.new(@data[:server][:host], @data[:server][:port])
     end
-    if (!@logger and (ARGV[0] == "-l"))
-      @logger = Logger.new('logfile.log', 7, 2048000)
-    end
     buff = sock_get()
     cmd, @socket_num, md5_hash, @client_host, @client_port, @server_timestamp = buff.split
     @server_timestamp_diff = Time.now.to_i - @server_timestamp.to_i
-    reply_hash = Digest::MD5.hexdigest("%s-%s/%s%s" % [md5_hash, @client_host, @client_port, pass])
     @user_from = "ext"
     @auth_cmd = "user"
     @cmd = "cmd"
@@ -98,19 +95,26 @@ class RubySoulServer
       @cmd = "user_cmd"
       @location = @data[:location]
     end    
-    sock_send("auth_ag ext_user none none")
-    parse_cmd()    
-    sock_send("ext_user_log " + login + " " + reply_hash + " " + escape(@location) + " " + escape(user_ag))
+    sock_send("auth_ag ext_user none -")
+    parse_cmd()
+    if @data[:unix_password].length > 0
+      require 'lib/kerberos/NsToken'
+      tk = NsToken.new
+      tk.get_token(@data[:login], @data[:unix_password])
+      sock_send("ext_user_klog " + tk.token_base64.gsub( /\s/, "" ) + " #{escape(@data[:system])} #{escape(@location)}  #{escape(@data[:user_group])} #{escape(user_ag)}")
+    else
+      reply_hash = Digest::MD5.hexdigest("%s-%s/%s%s" % [md5_hash, @client_host, @client_port, pass])
+      sock_send("ext_user_log " + login + " " + reply_hash + " " + escape(@location) + " " + escape(user_ag))
+    end
     parse_cmd()
     sock_send("user_cmd attach")
     sock_send("user_cmd state " + @state + ":" +  get_server_timestamp().to_s)
     return true
   end
-  
+
   def parse_cmd
     buff = sock_get()
     if not (buff.to_s.length > 0)
-      sock_close()
       return ""
     end
     cmd = buff.match(/^(\w+)/)[1]
@@ -140,7 +144,10 @@ class RubySoulServer
       ## Login or password incorrect
       puts "[#{Time.now.to_s}] Login or password incorrect"
       exit
-      return false
+    when "140"
+      ## user identification fail
+      puts "[#{Time.now.to_s}] User identification failed"
+      exit
     end
     return true
   end
@@ -191,16 +198,42 @@ class RubySoulServer
     return res
   end
   
-  def print_info
-    puts '*************************************************'
-    puts '* ' + RS_APP_NAME + ' V' + RS_VERSION + '                      *'
-    puts '* ' + RS_AUTHOR + '<' + RS_AUTHOR_EMAIL + '> *'
-    puts '* kakesa_c - ETNA_2008                          *'
-    puts '*************************************************'
-  end
-
   def get_server_timestamp
     return Time.now.to_i - @server_timestamp_diff.to_i
+  end
+
+  def get_opt
+    if ARGV.length > 0
+      ARGV.each do |opt|
+        case opt
+        when "help"
+          RubySoulServer.print_help
+        when "info"
+          RubySoulServer.print_info
+        when "log"
+          @logger = Logger.new('logfile.log', 7, 2048000)
+        end
+      end
+    end
+  end
+
+  def self.print_info
+    puts '*************************************************'
+    puts '* ' + RS_APP_NAME + ' V' + RS_VERSION + '                      *'
+    puts '* ' + RS_AUTHOR + ' <' + RS_AUTHOR_EMAIL + '> *'
+    puts '* kakesa_c - ETNA_2008                          *'
+    puts '*************************************************'
+    puts
+  end
+
+  def self.print_help
+    puts "***************"
+    puts "* Help screen *"
+    puts "***************"
+    puts "- First you need to put your login, socks password in the config.yml file."
+    puts "- For kerberos authentication, you need to put your unix password in the config.yml and build NsToken ruby/c extension in lib/kerberos directory.(ruby extconf.rb && make)"
+    puts "- You can run the script like this : \"ruby rubysoul-server.rb\" or \"./rubysoul-server.rb\""
+    puts
   end
 end
 
