@@ -13,7 +13,7 @@ rescue LoadError
 end
 
 RS_APP_NAME = "RubySoul Server"
-RS_VERSION = "0.6.00"
+RS_VERSION = "0.6.20"
 RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 
@@ -94,7 +94,7 @@ class RubySoulServer
       @cmd = "user_cmd"
       @location = @data[:location]
     end    
-    sock_send("auth_ag ext_user none -")
+    sock_send("auth_ag #{@auth_cmd} none -")
     parse_cmd()
     if @data[:unix_password].length > 0
       begin
@@ -109,14 +109,14 @@ class RubySoulServer
         puts "Impossible to retrieve the kerberos token"
         exit
       end
-      sock_send("ext_user_klog " + tk.token_base64 + " #{escape(@data[:system])} #{escape(@location)}  #{escape(@data[:user_group])} #{escape(user_ag)}")
+      sock_send("#{@auth_cmd}_klog " + tk.token_base64 + " #{escape(@data[:system])} #{escape(@location)}  #{escape(@data[:user_group])} #{escape(user_ag)}")
     else
       reply_hash = Digest::MD5.hexdigest("%s-%s/%s%s" % [md5_hash, @client_host, @client_port, pass])
-      sock_send("ext_user_log " + login + " " + reply_hash + " " + escape(@location) + " " + escape(user_ag))
+      sock_send("#{@auth_cmd}_log " + login + " " + reply_hash + " " + escape(@location) + " " + escape(user_ag))
     end
     parse_cmd()
-    sock_send("user_cmd attach")
-    sock_send("user_cmd state " + @state + ":" +  get_server_timestamp().to_s)
+    sock_send("#{@cmd} attach")
+    sock_send("#{@cmd} state " + @state + ":" +  get_server_timestamp().to_s)
     return true
   end
 
@@ -190,7 +190,7 @@ class RubySoulServer
   
   def sock_close
     if (@socket )
-      @socket.puts "exit"
+      sock_send("#{@cmd} state exit:" +  get_server_timestamp().to_s)
       @socket.close
     end
   end
@@ -244,6 +244,7 @@ begin
   rss = RubySoulServer.new
 rescue IOError, Errno::ENETRESET, Errno::ESHUTDOWN, Errno::ETIMEDOUT, Errno::ECONNRESET, Errno::ENETDOWN, Errno::EINVAL, Errno::ECONNABORTED, Errno::EIO, Errno::ECONNREFUSED, Errno::ENETUNREACH, Errno::EFAULT, Errno::EHOSTUNREACH, Errno::EINTR, Errno::EBADF
   puts "[#{Time.now.to_s}] Error: #{$!}"
+  #TODO: ping while server is restarting, whenn done continue
   retry
 rescue
   puts "[#{Time.now.to_s}] Unknown error, you can send email to the author at : #{RS_AUTHOR_EMAIL}"
