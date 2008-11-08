@@ -190,7 +190,7 @@ class RubySoulServer
   
   def sock_close
     if (@socket )
-      sock_send("#{@cmd} state exit:" +  get_server_timestamp().to_s)
+      sock_send("exit")
       @socket.close
     end
   end
