@@ -242,21 +242,12 @@ end
 
 begin
   rss = RubySoulServer.new
-rescue
-	sleep(5)
-	retry
-end
-
-=begin
-begin
-  rss = RubySoulServer.new
 rescue IOError, Errno::ENETRESET, Errno::ESHUTDOWN, Errno::ETIMEDOUT, Errno::ECONNRESET, Errno::ENETDOWN, Errno::EINVAL, Errno::ECONNABORTED, Errno::EIO, Errno::ECONNREFUSED, Errno::ENETUNREACH, Errno::EFAULT, Errno::EHOSTUNREACH, Errno::EINTR, Errno::EBADF
   puts "[#{Time.now.to_s}] Error: #{$!}"
-  #TODO: ping while server is restarting, whenn done continue
-  retry
 rescue
   puts "[#{Time.now.to_s}] Unknown error, you can send email to the author at : #{RS_AUTHOR_EMAIL}"
   puts "[#{Time.now.to_s}] Error: #{$!}"
-  exit
+ensure
+	sleep(10)
+	retry
 end
-=end
