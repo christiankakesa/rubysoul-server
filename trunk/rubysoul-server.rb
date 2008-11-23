@@ -19,7 +19,7 @@ RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 
 class RubySoulServer
   attr_accessor :socket, :logger
-  
+
   def initialize
     @socket = nil
     @logger = nil
@@ -34,7 +34,6 @@ class RubySoulServer
     @state = "server"
     @data = get_config()
     @parse_thread = nil
-    @mutex = Mutex.new
     @timestamp_thread = nil
     @server_timestamp = nil
     @server_timestamp_diff = 0
@@ -45,31 +44,37 @@ class RubySoulServer
       puts '[#{Time.now.to_s}] /!\ Netsoul server is not reacheable...'
       retry
     end
-    auth()
-    @parse_thread = Thread.new do
-      @mutex.synchronize do
-      	while (true)
-          parse_cmd()
-        end
-      end
-    end
-    puts "[#{Time.now.to_s}] #{RS_APP_NAME} #{RS_VERSION} Started..."
     at_exit {  if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
     trap("SIGINT") { exit }
     trap("SIGTERM") { exit }
-    @parse_thread.join()
+    start()
   end
-  
-  def auth
+
+  def start
     if not (connect(@data[:login], @data[:socks_password], RS_APP_NAME + " " + RS_VERSION))
       puts "[#{Time.now.to_s}] Can't connect to the NetSoul server..."
-      return false
+      exit()
     else
       @connect = true
-      return true
+      @parse_thread = Thread.new do
+        Thread.stop()
+        while @socket
+          begin
+            parse_cmd()
+            Thread.pass()
+          rescue
+            sock_close()
+						start()
+          end
+        end
+        Thread.exit()
+      end
+      puts "[#{Time.now.to_s}] #{RS_APP_NAME} #{RS_VERSION} Started..."
+      @parse_thread.run()
+      @parse_thread.join()
     end
   end
-  
+
   def connect(login, pass, user_ag)
     if not (@socket)
       @socket = TCPSocket.new(@data[:server][:host], @data[:server][:port])
@@ -93,7 +98,7 @@ class RubySoulServer
       @auth_cmd = "ext_user"
       @cmd = "user_cmd"
       @location = @data[:location]
-    end    
+    end
     sock_send("auth_ag #{@auth_cmd} none -")
     parse_cmd()
     if @data[:unix_password].length > 0
@@ -135,7 +140,7 @@ class RubySoulServer
       return ""
     end
   end
-  
+
   def rep(cmd)
     msg_num, msg = cmd.match(/^\w+\ (\d{3})\ \-\-\ (.*)/)[1..2]
     case msg_num.to_s
@@ -159,16 +164,16 @@ class RubySoulServer
     end
     return true
   end
-  
+
   def ping(cmd)
     sock_send(cmd.to_s)
   end
-  
+
   def get_config(filename = File.dirname(__FILE__) + "/config.yml")
     config = YAML::load(File.open(filename));
     return config
   end
-  
+
   def sock_send(string)
     if (@socket)
       @socket.puts string
@@ -177,7 +182,7 @@ class RubySoulServer
       end
     end
   end
-  
+
   def sock_get
     if (@socket)
       response = @socket.gets.to_s.chomp
@@ -187,7 +192,7 @@ class RubySoulServer
       return response
     end
   end
-  
+
   def sock_close
     if (@socket )
       sock_send("exit")
@@ -200,7 +205,7 @@ class RubySoulServer
     res = URI.escape(str, "\ :'@~\[\]&()=*$!;,\+\/\?")
     return res
   end
-  
+
   def get_server_timestamp
     return Time.now.to_i - @server_timestamp_diff.to_i
   end
@@ -244,10 +249,11 @@ begin
   rss = RubySoulServer.new
 rescue IOError, Errno::ENETRESET, Errno::ESHUTDOWN, Errno::ETIMEDOUT, Errno::ECONNRESET, Errno::ENETDOWN, Errno::EINVAL, Errno::ECONNABORTED, Errno::EIO, Errno::ECONNREFUSED, Errno::ENETUNREACH, Errno::EFAULT, Errno::EHOSTUNREACH, Errno::EINTR, Errno::EBADF
   puts "[#{Time.now.to_s}] Error: #{$!}"
+  sleep(10)
+  retry
 rescue
   puts "[#{Time.now.to_s}] Unknown error, you can send email to the author at : #{RS_AUTHOR_EMAIL}"
   puts "[#{Time.now.to_s}] Error: #{$!}"
-ensure
-	sleep(10)
-	retry
+  exit
 end
+
