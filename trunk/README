@@ -7,15 +7,17 @@ RubySoul Server is a ruby NetSoul client, it's only for ident.
 Complete your "config.yml" with your "login_l" and "yourpass".
 Run PATH_TO_RUBYSOUL_SERVER/rs_server.rb like this : "rs_server.rb" or "./rs_server.rb" or "ruby rs_server.rb", depending on your plateforme. 
 You can run RubySoul-Server with options :
- - "log"	=> All log data are stored in "logfile.log".
+ - "log"	=> All log data are stored in "#{log_dir}/logfile.log".
  - "help"	=> Print the help screen.
  - "info"	=> Print information about the programer.
 
 [Example of "config.yml"]
-:login: 'login_l'		#--- | Your login
-:socks_password: ''		#--- | Your socks password
-:unix_password: ''		#--- | Only if you have build lib/kerberos/NsToken, if you don't must be empty.
-:user_group: 'etna_2008'	#--- | Your school group (promo)
-:location: On RubySoul-Server	#--- | Your real location or client name ; in fact all that you want
+:login: kakesa_c
+:socks_password: ''
+:unix_password: '' #--- | Only if you have build lib/kerberos/NsToken, if you don't must be empty.
+:user_group: etna_2008
+:system: Unix
+:location: @ Home
+:log_dir: ''
 ...
 
