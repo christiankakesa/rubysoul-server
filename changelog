@@ -1,0 +1,12 @@
+PACKAGE (0.6.20) UNRELEASED; urgency=low
+
+  * Try to reconnect after server connection lose. For now not tested on all platforme (Unix/Windows).
+  * 50% of CPU usage is corrected. Now it's less than 5%.
+
+ -- Christian KAKESA <christian@maison>  Sun, 23 Nov 2008 01:54:14 +0100
+
+PACKAGE (0.6.00) UNRELEASED; urgency=low
+
+  * Initial release.
+
+ -- Christian KAKESA <christian@maison>  Sun, 23 Nov 2008 01:48:14 +0100
