@@ -1,3 +1,9 @@
+PACKAGE (0.7.00) RELEASED; urgency=low
+
+  * Better socket handling.
+
+ -- Christian KAKESA <christian@maison>  Thu, 26 May 2009 23:36:14 +0100
+
 PACKAGE (0.6.20) UNRELEASED; urgency=low
 
   * Try to reconnect after server connection lose. For now not tested on all platforme (Unix/Windows).
