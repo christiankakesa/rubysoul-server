@@ -6,11 +6,14 @@ rescue LoadError
   exit
 end
 
+trap("SIGINT") { exit }
+trap("SIGTERM") { exit }
+    
 begin
   rss = NetsoulServer.new(ARGV)
 rescue
   STDERR.puts "[#{Time.now.to_s}] Error: #{$!}"
-  sleep 0.5
+  sleep 5
   retry
 end
 

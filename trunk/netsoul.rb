@@ -11,8 +11,8 @@ rescue LoadError
   exit
 end
 
-RS_APP_NAME = "RubySoul Server"
-RS_VERSION = "0.6.21"
+RS_APP_NAME = "RubySoul-Server"
+RS_VERSION = "0.7.00"
 RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 
@@ -30,46 +30,31 @@ class NetsoulServer
     @auth_cmd = nil
     @cmd = nil
     @location = nil
-    @connect = false
     @state = "server"
     @data = get_config()
-    @parse_thread = nil
-    @timestamp_thread = nil
     @server_timestamp = nil
     @server_timestamp_diff = 0
     get_opt()
-    begin
-      ping_res = Ping.pingecho(@data[:server][:host], 1, @data[:server][:port])
-    rescue
-      STDERR.puts '[#{Time.now.to_s}] /!\ Netsoul server is not reacheable...'
-      retry
-    end
-	at_exit {  if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
-    trap("SIGINT") { exit }
-    trap("SIGTERM") { exit }
+    at_exit {  if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
     start()
   end
 
   def start
+    if not Ping.pingecho(@data[:server][:host], 1, @data[:server][:port])
+    	raise "Netsoul server is not reacheable !"
+    end
     if not (connect(@data[:login], @data[:socks_password], RS_APP_NAME + " " + RS_VERSION))
-      raise "[#{Time.now.to_s}] Can't connect to the NetSoul server..."
+      raise "Can't connect to the NetSoul server !"
     else
       GC.start
-      @connect = true
-      STDOUT.puts "[#{Time.now.to_s}] #{RS_APP_NAME} #{RS_VERSION} Started..."
-      @parse_thread = Thread.new do
-        loop {
-        	if IO.select([@socket], nil, nil)
-        		begin
-        			parse_cmd()
-        		rescue
-        			raise "#{$!}"
-        		end
-        	end
-        	sleep 1
-        }
-      end
-      @parse_thread.join()
+      NetsoulServer.print_start()
+      loop {
+        if IO.select([@socket], nil, nil)
+          parse_cmd()
+        end
+        raise "NetSoul socket is closed !" if @socket.closed?
+        sleep 0.5
+      }
     end
   end
 
@@ -101,13 +86,13 @@ class NetsoulServer
       begin
         require 'lib/kerberos/NsToken'
       rescue LoadError
-        str_err = "Error: #{$!}"
-        str_err += "Build the \"NsToken\" ruby/c extension if you don't.\nSomething like this : \"cd ./lib/kerberos && ruby extconf.rb && make\""
+        str_err = "#{$!} !\n"
+        str_err += "Try to build the \"NsToken\" ruby/c extension if you don't.\nSomething like this : \"cd ./lib/kerberos && ruby extconf.rb && make\""
         raise str_err
       end
       tk = NsToken.new
       if not tk.get_token(@data[:login], @data[:unix_password])
-        raise "Impossible to retrieve the kerberos token"
+        raise "Impossible to retrieve the kerberos token !"
       end
       sock_send("#{@auth_cmd}_klog " + tk.token_base64 + " #{escape(@data[:system])} #{escape(@location)}  #{escape(@data[:user_group])} #{escape(user_ag)}")
     else
@@ -122,15 +107,13 @@ class NetsoulServer
 
   def parse_cmd
     buff = sock_get()
-    if (buff.to_s.length > 0)
-		cmd = buff.match(/^(\w+)/)[1]
-		case cmd.to_s
-		when "ping"
-		  ping(buff.to_s)
-		when "rep"
-		  rep(buff)
-		end
-	end
+    cmd = buff.match(/^(\w+)/)[1]
+    case cmd.to_s
+    when "ping"
+      ping(buff.to_s)
+    when "rep"
+      rep(buff)
+    end
   end
 
   def rep(cmd)
@@ -147,11 +130,11 @@ class NetsoulServer
       return true
     when "033"
       ## Login or password incorrect
-      raise "[#{Time.now.to_s}] Login or password incorrect"
+      raise "Login or password incorrect !"
       exit
     when "140"
       ## user identification fail
-      raise "[#{Time.now.to_s}] User identification failed"
+      raise "User identification failed !"
       exit
     end
     return true
@@ -197,30 +180,53 @@ class NetsoulServer
   end
 
   def get_opt
-  	opt_help = false
-  	opt_info = false
+    opt_help = false
+    opt_info = false
     if @args.length > 0
       @args.each do |opt|
         case opt
         when "help"
           opt_help = true
         when "info"
-        	opt_info = true
+          opt_info = true
         when "log"
-          if @data[:log_dir].to_s.length > 0
-          	@logger = Logger.new(@data[:log_dir]+File::SEPARATOR+'rubysoul-server.log', 7, 10240000) if @logger.nil?
-          else
-          	@logger = Logger.new('rubysoul-server.log', 7, 10240000) if @logger.nil?
+          begin
+            if @data[:log_dir].to_s.length > 0
+              @logger = Logger.new(@data[:log_dir]+File::SEPARATOR+'rubysoul-server.log', 7, 10240000) if @logger.nil?
+            else
+              @logger = Logger.new('rubysoul-server.log', 7, 10240000) if @logger.nil?
+            end
+          rescue
+            @logger = nil
           end
         end
       end
       if (opt_help or opt_info)
-      	if opt_help; NetsoulServer.print_help; end;
-      	if opt_info; NetsoulServer.print_info; end;
-      	if @logger; @logger.close; @logger = nil; end;
-      	exit
+        if opt_help
+          NetsoulServer.print_help
+        end
+        if opt_info
+          NetsoulServer.print_info
+        end
+        if @logger
+          @logger.close
+          @logger = nil
+        end
+        exit
       end
     end
+  end
+  
+  def self.print_start
+	STDOUT.puts ' _____       _            _____             _        _____                          '
+	STDOUT.puts '|  __ \     | |          / ____|           | |      / ____|                         '
+	STDOUT.puts '| |__) |   _| |__  _   _| (___   ___  _   _| |_____| (___   ___ _ ____   _____ _ __ '
+	STDOUT.puts '|  _  / | | | \'_ \| | | |\___ \ / _ \| | | | |______\___ \ / _ \ \'__\ \ / / _ \ \'__|'
+	STDOUT.puts '| | \ \ |_| | |_) | |_| |____) | (_) | |_| | |      ____) |  __/ |   \ V /  __/ |   '
+	STDOUT.puts '|_|  \_\__,_|_.__/ \__, |_____/ \___/ \__,_|_|     |_____/ \___|_|    \_/ \___|_|   '
+	STDOUT.puts '                    __/ |                                                           '
+	STDOUT.puts '                   |___/                                                            '
+	STDOUT.puts "[#{Time.now.to_s}] #{RS_APP_NAME} #{RS_VERSION} Started..."
   end
 
   def self.print_info
