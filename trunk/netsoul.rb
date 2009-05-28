@@ -5,7 +5,6 @@ begin
   require 'uri'
   require 'thread'
   require 'logger'
-  require 'ping'
 rescue LoadError
   STDERR.puts "Error: #{$!}"
   exit
@@ -36,24 +35,23 @@ class NetsoulServer
     @server_timestamp_diff = 0
     get_opt()
     at_exit {  if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
-    start()
+    trap("SIGINT") { exit }
+	trap("SIGTERM") { exit }
+	start()
   end
 
   def start
-    if not Ping.pingecho(@data[:server][:host], 1, @data[:server][:port])
-    	raise "Netsoul server is not reacheable !"
-    end
     if not (connect(@data[:login], @data[:socks_password], RS_APP_NAME + " " + RS_VERSION))
       raise "Can't connect to the NetSoul server !"
     else
-      GC.start
-      NetsoulServer.print_start()
+      @logger.debug "#{RS_APP_NAME} #{RS_VERSION} Started..." if not @logger.nil?
       loop {
-        if IO.select([@socket], nil, nil)
+      	r,w,e = IO.select([@socket], nil, [@socket])
+      	if r
           parse_cmd()
         end
         raise "NetSoul socket is closed !" if @socket.closed?
-        sleep 0.5
+        raise "Netsoul socket exception !" if e
       }
     end
   end
@@ -151,16 +149,12 @@ class NetsoulServer
 
   def sock_send(string)
     @socket.puts string
-    if (!@logger.nil?)
-      @logger.debug "[send] : " + string
-    end
+    @logger.debug "[send] : " + string if not @logger.nil?
   end
 
   def sock_get
     response = @socket.gets.to_s.chomp
-    if (response.length > 0 and !@logger.nil?)
-      @logger.debug "[gets] : " + response
-    end
+    @logger.debug "[gets] : " + response if (response.length > 0 and !@logger.nil?)
     return response
   end
 
@@ -217,7 +211,7 @@ class NetsoulServer
     end
   end
   
-  def self.print_start
+  def self.print_info
 	STDOUT.puts ' _____       _            _____             _        _____                          '
 	STDOUT.puts '|  __ \     | |          / ____|           | |      / ____|                         '
 	STDOUT.puts '| |__) |   _| |__  _   _| (___   ___  _   _| |_____| (___   ___ _ ____   _____ _ __ '
@@ -226,11 +220,8 @@ class NetsoulServer
 	STDOUT.puts '|_|  \_\__,_|_.__/ \__, |_____/ \___/ \__,_|_|     |_____/ \___|_|    \_/ \___|_|   '
 	STDOUT.puts '                    __/ |                                                           '
 	STDOUT.puts '                   |___/                                                            '
-	STDOUT.puts "[#{Time.now.to_s}] #{RS_APP_NAME} #{RS_VERSION} Started..."
-  end
-
-  def self.print_info
-    STDOUT.puts '*************************************************'
+	STDOUT.puts
+	STDOUT.puts '*************************************************'
     STDOUT.puts '* ' + RS_APP_NAME + ' V' + RS_VERSION + '                       *'
     STDOUT.puts '* ' + RS_AUTHOR + ' <' + RS_AUTHOR_EMAIL + '> *'
     STDOUT.puts '* kakesa_c - ETNA_2008                          *'
@@ -249,7 +240,7 @@ class NetsoulServer
     STDOUT.puts "* Options"
     STDOUT.puts "\thelp : Print this help message."
     STDOUT.puts "\tinfo : Print author information."
-    STDOUT.puts "\tlog  : All message are stocked in logfile.log."
+    STDOUT.puts "\tlog  : All message are stored in your_log_dir#{File::SEPARATOR}rubysoul-server.log."
     STDOUT.puts
   end
 end

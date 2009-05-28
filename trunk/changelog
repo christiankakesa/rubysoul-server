@@ -1,6 +1,7 @@
 PACKAGE (0.7.00) RELEASED; urgency=low
 
   * Better socket handling.
+  * Works with ruby 1.9
 
  -- Christian KAKESA <christian@maison>  Thu, 26 May 2009 23:36:14 +0100
 
