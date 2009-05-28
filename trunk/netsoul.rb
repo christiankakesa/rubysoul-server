@@ -11,7 +11,7 @@ rescue LoadError
 end
 
 RS_APP_NAME = "RubySoul-Server"
-RS_VERSION = "0.7.00"
+RS_VERSION = "0.7.01"
 RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 
@@ -51,7 +51,7 @@ class NetsoulServer
           parse_cmd()
         end
         raise "NetSoul socket is closed !" if @socket.closed?
-        raise "Netsoul socket exception !" if e
+        STDERR.puts "Netsoul socket exception !" if e
       }
     end
   end
