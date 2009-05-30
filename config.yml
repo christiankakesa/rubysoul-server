@@ -1,11 +1,11 @@
 #--- | Application config
 :login: login_l
 :socks_password: ''
-:unix_password: '' #--- | Only if you have build lib/kerberos/NsToken, if you don't must be empty.
-:user_group: rubysoul_server_group
-:system: my_plateforme_os
-:location: where_am_i
-:log_dir: '' #--- | '/etc/var/log'
+:unix_password: #--- | Only if you have build lib/kerberos/NsToken, if you don't must be empty.
+:user_group: RUBY_GROUP
+:system: MY_OS
+:location: @Home
+:log_dir: #--- | '/var/log'
 
 :server:
   :host: ns-server.epita.fr
