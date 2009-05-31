@@ -96,7 +96,11 @@ class NetsoulServer
 
   def parse_cmd
     buff = sock_get()
-    cmd = buff.match(/^(\w+)/)[1]
+    if buff.to_s.length > 0
+    	cmd = buff.match(/^(\w+)/)[1]
+    else
+    	cmd = ""
+    end
     case cmd.to_s
     when "ping"
       ping(buff.to_s)
