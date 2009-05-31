@@ -1,3 +1,15 @@
+PACKAGE (0.7.02) RELEASED; urgency=low
+
+  * Add NSException class for better error handling.
+
+ -- Christian KAKESA <christian@maison>  Thu, 31 May 2009 23:36:14 +0100
+
+PACKAGE (0.7.01) RELEASED; urgency=low
+
+  * Code beautifier.
+
+ -- Christian KAKESA <christian@maison>  Thu, 28 May 2009 23:36:14 +0100
+
 PACKAGE (0.7.00) RELEASED; urgency=low
 
   * Better socket handling.
