@@ -15,6 +15,9 @@ RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 STATUS = "server"
 
+class NSError < StandardError; end
+class NSAuthError < StandardError; end
+
 class NetsoulServer
   attr_accessor :socket, :logger
 
@@ -31,18 +34,19 @@ class NetsoulServer
   end
 
   def start
-    if not (connect(@data[:login].to_s, @data[:socks_password].to_s, RS_APP_NAME + " " + RS_VERSION))
+    begin
+      connect(@data[:login].to_s, @data[:socks_password].to_s, RS_APP_NAME + " " + RS_VERSION)
+    rescue
       raise "Can't connect to the NetSoul server !"
-    else
-      @logger.debug "#{RS_APP_NAME} #{RS_VERSION} Started..." if not @logger.nil?
-      loop {
-        r,w,e = IO.select([@socket], nil, nil)
-        if r
-          parse_cmd()
-        end
-        raise "NetSoul socket is closed !" if @socket.closed?
-      }
     end
+    @logger.debug "#{RS_APP_NAME} #{RS_VERSION} Started..." if not @logger.nil?
+    loop {
+      r,w,e = IO.select([@socket], nil, nil)
+      if r
+        parse_cmd()
+      end
+      raise "NetSoul socket is closed !" if @socket.closed?
+    }
   end
 
   def connect(login, pass, user_ag)
@@ -74,11 +78,11 @@ class NetsoulServer
       rescue LoadError
         str_err = "#{$!} !\n"
         str_err += "Try to build the \"NsToken\" ruby/c extension if you don't.\nSomething like this : \"cd ./lib/kerberos && ruby extconf.rb && make\""
-        raise str_err
+        raise NSError, str_err
       end
       tk = NsToken.new
       if not tk.get_token(@data[:login].to_s, @data[:unix_password].to_s)
-        raise "Impossible to retrieve the kerberos token !"
+        raise NSError, "Impossible to retrieve the kerberos token !"
       end
       sock_send("#{auth_cmd}_klog #{tk.token_base64} #{escape(@data[:system])} #{escape(location)} #{escape(@data[:user_group])} #{escape(user_ag)}")
     else
@@ -88,7 +92,6 @@ class NetsoulServer
     parse_cmd()
     sock_send("#{cmd} attach")
     sock_send("#{cmd} state " + STATUS + ":" + server_timestamp.to_s)
-    return true
   end
 
   def parse_cmd
@@ -116,10 +119,10 @@ class NetsoulServer
       return true
     when "033"
       ## Login or password incorrect
-      raise "Login or password incorrect !"
+      raise NSAuthError, "Login or password incorrect !"
     when "140"
       ## user identification fail
-      raise "User identification failed !"
+      raise NSAuthError, "User identification failed !"
     end
     return true
   end
