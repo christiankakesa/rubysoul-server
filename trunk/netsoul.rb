@@ -10,7 +10,7 @@ rescue LoadError
 end
 
 RS_APP_NAME = "RubySoul-Server"
-RS_VERSION = "0.7.02"
+RS_VERSION = "0.7.03"
 RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 STATUS = "server"
@@ -41,7 +41,7 @@ class NetsoulServer
     end
     @logger.debug "#{RS_APP_NAME} #{RS_VERSION} Started..." if not @logger.nil?
     loop {
-      r,w,e = IO.select([@socket], nil, nil)
+      r,w,e = IO.select([@socket], nil, nil, 1)
       if r
         parse_cmd()
       end
@@ -78,11 +78,11 @@ class NetsoulServer
       rescue LoadError
         str_err = "#{$!} !\n"
         str_err += "Try to build the \"NsToken\" ruby/c extension if you don't.\nSomething like this : \"cd ./lib/kerberos && ruby extconf.rb && make\""
-        raise NSError, str_err
+        raise NSError.new(str_err)
       end
       tk = NsToken.new
       if not tk.get_token(@data[:login].to_s, @data[:unix_password].to_s)
-        raise NSError, "Impossible to retrieve the kerberos token !"
+        raise NSError.new("Impossible to retrieve the kerberos token !")
       end
       sock_send("#{auth_cmd}_klog #{tk.token_base64} #{escape(@data[:system])} #{escape(location)} #{escape(@data[:user_group])} #{escape(user_ag)}")
     else
@@ -123,10 +123,10 @@ class NetsoulServer
       return true
     when "033"
       ## Login or password incorrect
-      raise NSAuthError, "Login or password incorrect !"
+      raise NSAuthError.new("Login or password incorrect !")
     when "140"
       ## user identification fail
-      raise NSAuthError, "User identification failed !"
+      raise NSAuthError.new("User identification failed !")
     end
     return true
   end
@@ -136,6 +136,7 @@ class NetsoulServer
   end
 
   def get_config(filename = File.dirname(__FILE__) + "#{File::SEPARATOR}config.yml")
+  	# Dynamically create config.yml file if not exist.
     config = YAML.load_file(filename);
     return config
   end
@@ -168,9 +169,13 @@ class NetsoulServer
       @args.each do |opt|
         case opt
         when "--help", "-help", "-h", "-H"
-          opt_help = true
+			NetsoulServer.print_help
+			if @logger
+				@logger.close
+				@logger = nil
+			end
+			exit
         when "--log", "-log", "-l", "-L"
-          break if opt_help
           begin
             if @data[:log_dir].to_s.length > 0
               @logger = Logger.new(@data[:log_dir].to_s+File::SEPARATOR+'rubysoul-server.log', 7, 10240000) if @logger.nil?
@@ -181,14 +186,6 @@ class NetsoulServer
             @logger = nil
           end
         end
-      end
-      if (opt_help)
-        NetsoulServer.print_help
-        if @logger
-          @logger.close
-          @logger = nil
-        end
-        exit
       end
     end
   end
