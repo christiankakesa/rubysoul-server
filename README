@@ -16,7 +16,7 @@
   --log, -log, -l, -L   : All message are stored in current_or_log_dir/rubysoul-server.log.
 
 *************************************************
-* RubySoul-Server V0.7.02                       *
+* RubySoul-Server V0.7.03                       *
 * Christian KAKESA <christian.kakesa@gmail.com> *
 * kakesa_c - ETNA_2008                          *
 *************************************************
