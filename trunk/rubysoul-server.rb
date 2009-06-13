@@ -10,11 +10,9 @@ begin
   rss = NetsoulServer.new(ARGV)
 rescue NSError, NSAuthError
   STDERR.puts "[#{Time.now.to_s}] Error: #{$!}"
-  sleep 30
-  retry
+  exit
 rescue
   STDERR.puts "[#{Time.now.to_s}] Error: #{$!}"
-  sleep 1
   retry
 end
 

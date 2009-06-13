@@ -29,7 +29,7 @@
 :socks_password: 'my_socks_password'
 :unix_password: #--- | Only if you have build lib/kerberos/NsToken, if you don't must be empty.
 :user_group: ETNA_2008
-:system: Ubuntu Jaunty Jakalope
+:system: Ubuntu Jaunty Jackalope
 :location: @Home
 :log_dir: '/var/log'
 ...

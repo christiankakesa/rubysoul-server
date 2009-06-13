@@ -4,6 +4,7 @@ begin
   require 'digest/md5'
   require 'uri'
   require 'logger'
+  require 'lib/reactor'
 rescue LoadError
   STDERR.puts "Error: #{$!}"
   exit
@@ -27,26 +28,28 @@ class NetsoulServer
     @logger = nil
     @data = get_config()
     get_opt()
-    at_exit { if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
+    at_exit { if (@socket); sock_close(); end; if (@logger); @logger.close; end; }
     trap("SIGINT") { exit }
     trap("SIGTERM") { exit }
     start()
   end
 
   def start
-    begin
-      connect(@data[:login].to_s, @data[:socks_password].to_s, RS_APP_NAME + " " + RS_VERSION)
-    rescue
-      raise "Can't connect to the NetSoul server !"
-    end
+    connect(@data[:login].to_s, @data[:socks_password].to_s, RS_APP_NAME + " " + RS_VERSION)
     @logger.debug "#{RS_APP_NAME} #{RS_VERSION} Started..." if not @logger.nil?
+    reactor = Reactor::Base.new
+    reactor.attach(:read, @socket) do |cli|
+    	parse_cmd()
+    	# raise "NetSoul socket is closed !" if cli.closed?
+    end
+    reactor.run()
+=begin
     loop {
-      r,w,e = IO.select([@socket], nil, nil, 1)
-      if r
-        parse_cmd()
-      end
+      res = select([@socket], nil, nil, 5)
+      parse_cmd() if res
       raise "NetSoul socket is closed !" if @socket.closed?
     }
+=end
   end
 
   def connect(login, pass, user_ag)
@@ -136,8 +139,9 @@ class NetsoulServer
   end
 
   def get_config(filename = File.dirname(__FILE__) + "#{File::SEPARATOR}config.yml")
-  	# Dynamically create config.yml file if not exist.
-    config = YAML.load_file(filename);
+  	fd = File.open(filename, 'r')
+    config = YAML.load(fd)
+    fd.close
     return config
   end
 
@@ -158,13 +162,12 @@ class NetsoulServer
   end
 
   def escape(str)
-    str = URI.escape(str)
-    res = URI.escape(str, "\ :'@~\[\]&()=*$!;,\+\/\?")
+    res = URI.escape(str, Regexp.new("#{URI::PATTERN::ALNUM}[:graph:][:punct:][:cntrl:][:print:][:blank:]", false, 'N'))
+    res = URI.escape(res, Regexp.new("[^#{URI::PATTERN::ALNUM}]", false, 'N'))
     return res
   end
 
   def get_opt
-    opt_help = false
     if @args.length > 0
       @args.each do |opt|
         case opt
