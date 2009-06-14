@@ -29,8 +29,9 @@ class NetsoulServer
     @data = get_config()
     get_opt()
     at_exit { if (@socket); sock_close(); end; if (@logger); @logger.close; end; }
-    trap("SIGINT") { exit }
-    trap("SIGTERM") { exit }
+    trap('INT'  ) { exit }
+    trap('TERM' ) { exit }
+    trap('KILL' ) { exit }
     start()
   end
 
@@ -38,24 +39,16 @@ class NetsoulServer
     connect(@data[:login].to_s, @data[:socks_password].to_s, RS_APP_NAME + " " + RS_VERSION)
     @logger.debug "#{RS_APP_NAME} #{RS_VERSION} Started..." if not @logger.nil?
     reactor = Reactor::Base.new
-    reactor.attach(:read, @socket) do |cli|
+    reactor.attach(:read, @socket) do
     	parse_cmd()
-    	# raise "NetSoul socket is closed !" if cli.closed?
     end
     reactor.run()
-=begin
-    loop {
-      res = select([@socket], nil, nil, 5)
-      parse_cmd() if res
-      raise "NetSoul socket is closed !" if @socket.closed?
-    }
-=end
   end
 
   def connect(login, pass, user_ag)
     @socket = TCPSocket.new(@data[:server][:host].to_s, @data[:server][:port].to_i)
     buff = sock_get()
-    cmd, socket_num, md5_hash, client_host, client_port, server_timestamp = buff.split
+    salut, socket_num, md5_hash, client_host, client_port, server_timestamp = buff.split
     user_from = "ext"
     auth_cmd = "user"
     cmd = "cmd"
