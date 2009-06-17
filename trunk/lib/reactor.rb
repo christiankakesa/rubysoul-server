@@ -177,7 +177,7 @@ module Reactor
     
     def process_timers
       t = Time.now
-      @timers.each_key.select{|time| time < t }.each{|t| @timers.delete(t).each{|p| p.call } }
+      @timers.each_key.select{|time| time < t }.each{|tm| @timers.delete(tm).each{|p| p.call } }
     end
     
     def fire_ios(mode, ios)

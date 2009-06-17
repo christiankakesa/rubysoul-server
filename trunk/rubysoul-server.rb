@@ -2,17 +2,18 @@
 begin
   require 'netsoul'
 rescue LoadError
-  STDERR.puts "Error: #{$!}"
+  $stderr.puts "Error: #{$!}"
   exit
 end
 
 begin
   rss = NetsoulServer.new(ARGV)
 rescue NSError, NSAuthError
-  STDERR.puts "[#{Time.now.to_s}] Error: #{$!}"
+  $stderr.puts "[#{Time.now.to_s}] Error: #{$!}"
   exit
 rescue
-  STDERR.puts "[#{Time.now.to_s}] Error: #{$!}"
+  $stderr.puts "[#{Time.now.to_s}] Error: #{$!}"
+  Kernel.sleep(10)
   retry
 end
 
