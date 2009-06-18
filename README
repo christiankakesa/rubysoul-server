@@ -7,30 +7,27 @@
                     __/ |                                                           
                    |___/                                                            
 
--First you need to put your login, socks password in the config.yml file.
--For kerberos authentication, you need to put your unix password in the config.yml 
- and build NsToken ruby/c extension in lib/kerberos directory.(ruby extconf.rb && make)
--You can run the script like this : "ruby rubysoul-server.rb" or "./rubysoul-server.rb"
+#--- ! RubySoul Server - Christian KAKESA - Etna_2008 - @ 27/10/2006
+#--- ! Bugs-report : Christian KAKESA <christian.kakesa@gmail.com>
+#--- ! If you have any probleme with rubysoul_server, please send me an email
+#--- ! with your bugs description.
 
-[Commands options]
-  --help, -help, -h, -H : Print this help message.
 
-*************************************************
-* RubySoul-Server V0.7.03                       *
-* Christian KAKESA <christian.kakesa@gmail.com> *
-* kakesa_c - ETNA_2008                          *
-*************************************************
-
----
+RubySoul-Server is a ruby NetSoul client, it's only for ident.
+Complete your "config.yml" with your "login_l" and "yourpassword".
+Run PATH_TO_RUBYSOUL_SERVER/rs_server.rb like this : "rs_server.rb" or "./rs_server.rb" or "ruby rs_server.rb", depending on your plateforme. 
+You can run RubySoul-Server with options :
+ - "log"	=> All log data are stored in "#{log_dir}/logfile.log".
+ - "help"	=> Print the help screen.
+ - "info"	=> Print information about the programer.
 
 [Example of "config.yml"]
-#--- | Application config
 :login: kakesa_c
 :socks_password: 'my_socks_password'
-:unix_password: #--- | Only if you have build lib/kerberos/NsToken, if you don't must be empty.
-:user_group: ETNA_2008
-:system: Ubuntu Jaunty Jackalope
-:location: @Home
-:log_dir: '/var/log'
+:unix_password: '' #--- | Only if you have build lib/kerberos/NsToken, if you don't must be empty.
+:user_group: etna_2008
+:system: Unix
+:location: @ Home
+:log_dir: '/etc/var/log'
 ...
 
