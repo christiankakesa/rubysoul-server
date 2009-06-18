@@ -4,14 +4,13 @@ begin
   require 'digest/md5'
   require 'uri'
   require 'logger'
-  require 'lib/reactor'
 rescue LoadError
-  $stderr.puts "Error: #{$!}"
+  STDERR.puts "Error: #{$!}"
   exit
 end
 
 RS_APP_NAME = "RubySoul-Server"
-RS_VERSION = "0.7.03"
+RS_VERSION = "0.7.02"
 RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 STATUS = "server"
@@ -28,30 +27,32 @@ class NetsoulServer
     @logger = nil
     @data = get_config()
     get_opt()
-    at_exit { if (@socket); sock_close(); end; NetsoulServer.print_help(); }
-    trap('INT'  ) { exit }
-    trap('TERM' ) { exit }
-    trap('KILL' ) { exit }
+    at_exit { if (@socket ); sock_close() end; if (@logger); @logger.close; end; }
+    trap("SIGINT") { exit }
+    trap("SIGTERM") { exit }
     start()
   end
 
   def start
-    connect(@data[:login].to_s, @data[:socks_password].to_s, RS_APP_NAME + " " + RS_VERSION)
-    $stdout.puts "#{RS_APP_NAME} #{RS_VERSION} Started..." if $DEBUG
-    reactor = Reactor::Base.new
-    reactor.attach(:read, @socket) do
-      if (@socket.closed? || @socket.nil?)
-        raise "Socket is closed or not available"
-      end
-      parse_cmd()
+    begin
+      connect(@data[:login].to_s, @data[:socks_password].to_s, RS_APP_NAME + " " + RS_VERSION)
+    rescue
+      raise "Can't connect to the NetSoul server !"
     end
-    reactor.run()
+    @logger.debug "#{RS_APP_NAME} #{RS_VERSION} Started..." if not @logger.nil?
+    loop {
+      r,w,e = IO.select([@socket], nil, nil)
+      if r
+        parse_cmd()
+      end
+      raise "NetSoul socket is closed !" if @socket.closed?
+    }
   end
 
   def connect(login, pass, user_ag)
     @socket = TCPSocket.new(@data[:server][:host].to_s, @data[:server][:port].to_i)
     buff = sock_get()
-    salut, socket_num, md5_hash, client_host, client_port, server_timestamp = buff.split
+    cmd, socket_num, md5_hash, client_host, client_port, server_timestamp = buff.split
     user_from = "ext"
     auth_cmd = "user"
     cmd = "cmd"
@@ -77,11 +78,11 @@ class NetsoulServer
       rescue LoadError
         str_err = "#{$!} !\n"
         str_err += "Try to build the \"NsToken\" ruby/c extension if you don't.\nSomething like this : \"cd ./lib/kerberos && ruby extconf.rb && make\""
-        raise NSError.new(str_err)
+        raise NSError, str_err
       end
       tk = NsToken.new
       if not tk.get_token(@data[:login].to_s, @data[:unix_password].to_s)
-        raise NSError.new("Impossible to retrieve the kerberos token !")
+        raise NSError, "Impossible to retrieve the kerberos token !"
       end
       sock_send("#{auth_cmd}_klog #{tk.token_base64} #{escape(@data[:system])} #{escape(location)} #{escape(@data[:user_group])} #{escape(user_ag)}")
     else
@@ -96,9 +97,9 @@ class NetsoulServer
   def parse_cmd
     buff = sock_get()
     if buff.to_s.length > 0
-      cmd = buff.match(/^(\w+)/)[1]
+    	cmd = buff.match(/^(\w+)/)[1]
     else
-      raise "Socket buffer is empty"
+    	cmd = ""
     end
     case cmd.to_s
     when "ping"
@@ -122,10 +123,10 @@ class NetsoulServer
       return true
     when "033"
       ## Login or password incorrect
-      raise NSAuthError.new("Login or password incorrect !")
+      raise NSAuthError, "Login or password incorrect !"
     when "140"
       ## user identification fail
-      raise NSAuthError.new("User identification failed !")
+      raise NSAuthError, "User identification failed !"
     end
     return true
   end
@@ -135,20 +136,18 @@ class NetsoulServer
   end
 
   def get_config(filename = File.dirname(__FILE__) + "#{File::SEPARATOR}config.yml")
-    fd = File.open(filename, 'r')
-    config = YAML.load(fd)
-    fd.close
+    config = YAML.load_file(filename);
     return config
   end
 
   def sock_send(string)
     @socket.puts string
-    $stdout.puts "[send] : " + string if $DEBUG
+    @logger.debug "[send] : " + string if not @logger.nil?
   end
 
   def sock_get
     response = @socket.gets.to_s.chomp
-    $stdout.puts "[gets] : " + response if $DEBUG
+    @logger.debug "[gets] : " + response if (response.length > 0 and !@logger.nil?)
     return response
   end
 
@@ -158,49 +157,65 @@ class NetsoulServer
   end
 
   def escape(str)
-    res = URI.escape(str, Regexp.new("#{URI::PATTERN::ALNUM}[:graph:][:punct:][:cntrl:][:print:][:blank:]", false))
-    res = URI.escape(res, Regexp.new("[^#{URI::PATTERN::ALNUM}]", false))
+    str = URI.escape(str)
+    res = URI.escape(str, "\ :'@~\[\]&()=*$!;,\+\/\?")
     return res
   end
 
   def get_opt
+    opt_help = false
     if @args.length > 0
       @args.each do |opt|
         case opt
         when "--help", "-help", "-h", "-H"
-          NetsoulServer.print_help
-        else
-        	$stdout.puts "Unknwon paramater : #{opt}"
+          opt_help = true
+        when "--log", "-log", "-l", "-L"
+          break if opt_help
+          begin
+            if @data[:log_dir].to_s.length > 0
+              @logger = Logger.new(@data[:log_dir].to_s+File::SEPARATOR+'rubysoul-server.log', 7, 10240000) if @logger.nil?
+            else
+              @logger = Logger.new('rubysoul-server.log', 7, 10240000) if @logger.nil?
+            end
+          rescue
+            @logger = nil
+          end
         end
       end
-      exit
+      if (opt_help)
+        NetsoulServer.print_help
+        if @logger
+          @logger.close
+          @logger = nil
+        end
+        exit
+      end
     end
   end
 
   def self.print_help
-  	$stdout.puts
-    $stdout.puts ' _____       _            _____             _        _____                          '
-    $stdout.puts '|  __ \     | |          / ____|           | |      / ____|                         '
-    $stdout.puts '| |__) |   _| |__  _   _| (___   ___  _   _| |_____| (___   ___ _ ____   _____ _ __ '
-    $stdout.puts '|  _  / | | | \'_ \| | | |\___ \ / _ \| | | | |______\___ \ / _ \ \'__\ \ / / _ \ \'__|'
-    $stdout.puts '| | \ \ |_| | |_) | |_| |____) | (_) | |_| | |      ____) |  __/ |   \ V /  __/ |   '
-    $stdout.puts '|_|  \_\__,_|_.__/ \__, |_____/ \___/ \__,_|_|     |_____/ \___|_|    \_/ \___|_|   '
-    $stdout.puts '                    __/ |                                                           '
-    $stdout.puts '                   |___/                                                            '
-    $stdout.puts
-    $stdout.puts "-First you need to put your login, socks password in the config.yml file."
-    $stdout.puts "-For kerberos authentication, you need to put your unix password in the config.yml "
-    $stdout.puts " and build NsToken ruby/c extension in lib/kerberos directory.(ruby extconf.rb && make)"
-    $stdout.puts "-You can run the script like this : \"ruby rubysoul-server.rb\" or \"./rubysoul-server.rb\""
-    $stdout.puts
-    $stdout.puts "[Commands options]"
-    $stdout.puts "  --help, -help, -h, -H : Print this help message."
-    $stdout.puts
-    $stdout.puts '*************************************************'
-    $stdout.puts '* ' + RS_APP_NAME + ' V' + RS_VERSION + '                       *'
-    $stdout.puts '* ' + RS_AUTHOR + ' <' + RS_AUTHOR_EMAIL + '> *'
-    $stdout.puts '* kakesa_c - ETNA_2008                          *'
-    $stdout.puts '*************************************************'
+    STDOUT.puts ' _____       _            _____             _        _____                          '
+    STDOUT.puts '|  __ \     | |          / ____|           | |      / ____|                         '
+    STDOUT.puts '| |__) |   _| |__  _   _| (___   ___  _   _| |_____| (___   ___ _ ____   _____ _ __ '
+    STDOUT.puts '|  _  / | | | \'_ \| | | |\___ \ / _ \| | | | |______\___ \ / _ \ \'__\ \ / / _ \ \'__|'
+    STDOUT.puts '| | \ \ |_| | |_) | |_| |____) | (_) | |_| | |      ____) |  __/ |   \ V /  __/ |   '
+    STDOUT.puts '|_|  \_\__,_|_.__/ \__, |_____/ \___/ \__,_|_|     |_____/ \___|_|    \_/ \___|_|   '
+    STDOUT.puts '                    __/ |                                                           '
+    STDOUT.puts '                   |___/                                                            '
+    STDOUT.puts
+    STDOUT.puts "- First you need to put your login, socks password in the config.yml file."
+    STDOUT.puts "- For kerberos authentication, you need to put your unix password in the config.yml and build NsToken ruby/c extension in lib/kerberos directory.(ruby extconf.rb && make)"
+    STDOUT.puts "- You can run the script like this : \"ruby rubysoul-server.rb\" or \"./rubysoul-server.rb\""
+    STDOUT.puts
+    STDOUT.puts "[Commands options]"
+    STDOUT.puts "  --help, -help, -h, -H : Print this help message."
+    STDOUT.puts "  --log, -log, -l, -L   : All message are stored in current_or_log_dir#{File::SEPARATOR}rubysoul-server.log."
+    STDOUT.puts
+    STDOUT.puts '*************************************************'
+    STDOUT.puts '* ' + RS_APP_NAME + ' V' + RS_VERSION + '                       *'
+    STDOUT.puts '* ' + RS_AUTHOR + ' <' + RS_AUTHOR_EMAIL + '> *'
+    STDOUT.puts '* kakesa_c - ETNA_2008                          *'
+    STDOUT.puts '*************************************************'
   end
 end
 
