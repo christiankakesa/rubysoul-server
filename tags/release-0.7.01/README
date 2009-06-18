@@ -1,0 +1,33 @@
+ _____       _            _____             _        _____                          
+|  __ \     | |          / ____|           | |      / ____|                         
+| |__) |   _| |__  _   _| (___   ___  _   _| |_____| (___   ___ _ ____   _____ _ __ 
+|  _  / | | | '_ \| | | |\___ \ / _ \| | | | |______\___ \ / _ \ '__\ \ / / _ \ '__|
+| | \ \ |_| | |_) | |_| |____) | (_) | |_| | |      ____) |  __/ |   \ V /  __/ |   
+|_|  \_\__,_|_.__/ \__, |_____/ \___/ \__,_|_|     |_____/ \___|_|    \_/ \___|_|   
+                    __/ |                                                           
+                   |___/                                                            
+
+#--- ! RubySoul Server - Christian KAKESA - Etna_2008 - @ 27/10/2006
+#--- ! Bugs-report : Christian KAKESA <christian.kakesa@gmail.com>
+#--- ! If you have any probleme with rubysoul_server, please send me an email
+#--- ! with your bugs description.
+
+
+RubySoul-Server is a ruby NetSoul client, it's only for ident.
+Complete your "config.yml" with your "login_l" and "yourpassword".
+Run PATH_TO_RUBYSOUL_SERVER/rs_server.rb like this : "rs_server.rb" or "./rs_server.rb" or "ruby rs_server.rb", depending on your plateforme. 
+You can run RubySoul-Server with options :
+ - "log"	=> All log data are stored in "#{log_dir}/logfile.log".
+ - "help"	=> Print the help screen.
+ - "info"	=> Print information about the programer.
+
+[Example of "config.yml"]
+:login: kakesa_c
+:socks_password: 'my_socks_password'
+:unix_password: '' #--- | Only if you have build lib/kerberos/NsToken, if you don't must be empty.
+:user_group: etna_2008
+:system: Unix
+:location: @ Home
+:log_dir: '/etc/var/log'
+...
+

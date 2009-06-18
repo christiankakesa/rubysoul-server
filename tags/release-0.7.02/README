@@ -1,0 +1,36 @@
+ _____       _            _____             _        _____                          
+|  __ \     | |          / ____|           | |      / ____|                         
+| |__) |   _| |__  _   _| (___   ___  _   _| |_____| (___   ___ _ ____   _____ _ __ 
+|  _  / | | | '_ \| | | |\___ \ / _ \| | | | |______\___ \ / _ \ '__\ \ / / _ \ '__|
+| | \ \ |_| | |_) | |_| |____) | (_) | |_| | |      ____) |  __/ |   \ V /  __/ |   
+|_|  \_\__,_|_.__/ \__, |_____/ \___/ \__,_|_|     |_____/ \___|_|    \_/ \___|_|   
+                    __/ |                                                           
+                   |___/                                                            
+
+- First you need to put your login, socks password in the config.yml file.
+- For kerberos authentication, you need to put your unix password in the config.yml and build NsToken ruby/c extension in lib/kerberos directory.(ruby extconf.rb && make)
+- You can run the script like this : "ruby rubysoul-server.rb" or "./rubysoul-server.rb"
+
+[Commands options]
+  --help, -help, -h, -H : Print this help message.
+  --log, -log, -l, -L   : All message are stored in current_or_log_dir/rubysoul-server.log.
+
+*************************************************
+* RubySoul-Server V0.7.02                       *
+* Christian KAKESA <christian.kakesa@gmail.com> *
+* kakesa_c - ETNA_2008                          *
+*************************************************
+
+---
+
+[Example of "config.yml"]
+#--- | Application config
+:login: kakesa_c
+:socks_password: 'my_socks_password'
+:unix_password: #--- | Only if you have build lib/kerberos/NsToken, if you don't must be empty.
+:user_group: ETNA_2008
+:system: Ubuntu Jaunty Jakalope
+:location: @Home
+:log_dir: '/var/log'
+...
+
