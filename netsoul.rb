@@ -3,7 +3,6 @@ begin
   require 'yaml'
   require 'digest/md5'
   require 'uri'
-  require 'logger'
   require 'lib/reactor'
 rescue LoadError
   $stderr.puts "Error: #{$!}"
@@ -11,7 +10,7 @@ rescue LoadError
 end
 
 RS_APP_NAME = "RubySoul-Server"
-RS_VERSION = "0.7.03"
+RS_VERSION = "0.7.04"
 RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 STATUS = "server"
@@ -76,7 +75,8 @@ class NetsoulServer
         require 'lib/kerberos/NsToken'
       rescue LoadError
         str_err = "#{$!} !\n"
-        str_err += "Try to build the \"NsToken\" ruby/c extension if you don't.\nSomething like this : \"cd ./lib/kerberos && ruby extconf.rb && make\""
+        str_err += "Try to build the \"NsToken\" ruby/c extension if you don't.\n"
+        str_err += "Something like this : \"cd ./lib/kerberos && ruby extconf.rb && make\""
         raise NSError.new(str_err)
       end
       tk = NsToken.new
