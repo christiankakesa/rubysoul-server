@@ -83,14 +83,14 @@ class NetsoulServer
       if not tk.get_token(@data[:login].to_s, @data[:unix_password].to_s)
         raise NSError.new("Impossible to retrieve the kerberos token !")
       end
-      sock_send("#{auth_cmd}_klog #{tk.token_base64} #{escape(@data[:system])} #{escape(location)} #{escape(@data[:user_group])} #{escape(user_ag)}")
+      sock_send("#{auth_cmd}_klog #{tk.token_base64.slice(0, 812)} #{escape(@data[:system])} #{escape(location)} #{escape(@data[:user_group])} #{escape(user_ag)}")
     else
       reply_hash = Digest::MD5.hexdigest("%s-%s/%s%s" % [md5_hash, client_host, client_port, pass])
       sock_send("#{auth_cmd}_log " + login + " " + reply_hash + " " + escape(location) + " " + escape(user_ag))
     end
     parse_cmd()
     sock_send("#{cmd} attach")
-    sock_send("#{cmd} state " + STATUS + ":" + server_timestamp.to_s)
+    sock_send("#{cmd} state #{STATUS}:#{server_timestamp.to_s}")
   end
 
   def parse_cmd
@@ -143,12 +143,12 @@ class NetsoulServer
 
   def sock_send(string)
     @socket.puts string
-    $stdout.puts "[send] : " + string if $DEBUG
+    $stdout.puts "#{Time.now}|[send] : #{string}" if $DEBUG
   end
 
   def sock_get
     response = @socket.gets.to_s.chomp
-    $stdout.puts "[gets] : " + response if $DEBUG
+    $stdout.puts "#{Time.now}|[gets] : #{response}" if $DEBUG
     return response
   end
 
