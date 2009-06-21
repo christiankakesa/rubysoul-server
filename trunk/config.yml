@@ -5,7 +5,6 @@
 :user_group: RUBY_GROUP
 :system: MY_OS
 :location: @Home
-:log_dir: #--- | '/var/log'
 
 :server:
   :host: ns-server.epita.fr
@@ -45,3 +44,4 @@
   vpn: 10.10.
   adm: 10.1.
   epita: 10.
+
