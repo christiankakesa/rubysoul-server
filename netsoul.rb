@@ -10,7 +10,7 @@ rescue LoadError
 end
 
 RS_APP_NAME = "RubySoul-Server"
-RS_VERSION = "0.7.04"
+RS_VERSION = "0.7.05"
 RS_AUTHOR = "Christian KAKESA"
 RS_AUTHOR_EMAIL = "christian.kakesa@gmail.com"
 STATUS = "server"
@@ -24,9 +24,9 @@ class NetsoulServer
   def initialize(args)
     @args = args||Array.new
     @socket = nil
-    @logger = nil
-    @data = get_config()
+    @config_file = nil
     get_opt()
+    @data = get_config()
     at_exit { if (@socket); sock_close(); end; NetsoulServer.print_help(); }
     trap('INT'  ) { exit }
     trap('TERM' ) { exit }
@@ -42,7 +42,11 @@ class NetsoulServer
       if (@socket.closed? || @socket.nil?)
         raise "Socket is closed or not available"
       end
-      parse_cmd()
+      begin
+        parse_cmd()
+      rescue
+        raise "Error in parse command. #{$!}"
+      end
     end
     reactor.run()
   end
@@ -85,8 +89,8 @@ class NetsoulServer
       end
       sock_send("#{auth_cmd}_klog #{tk.token_base64.slice(0, 812)} #{escape(@data[:system])} #{escape(location)} #{escape(@data[:user_group])} #{escape(user_ag)}")
     else
-      reply_hash = Digest::MD5.hexdigest("%s-%s/%s%s" % [md5_hash, client_host, client_port, pass])
-      sock_send("#{auth_cmd}_log " + login + " " + reply_hash + " " + escape(location) + " " + escape(user_ag))
+      reply_hash = Digest::MD5.hexdigest("#{md5_hash}-#{client_host}/#{client_port}#{pass}")
+      sock_send("#{auth_cmd}_log #{login} #{reply_hash} #{escape(location)} #{escape(user_ag)}")
     end
     parse_cmd()
     sock_send("#{cmd} attach")
@@ -135,7 +139,8 @@ class NetsoulServer
   end
 
   def get_config(filename = File.dirname(__FILE__) + "#{File::SEPARATOR}config.yml")
-    fd = File.open(filename, 'r')
+  	config_file = @config_file||filename
+    fd = File.open(config_file, 'r')
     config = YAML.load(fd)
     fd.close
     return config
@@ -165,20 +170,24 @@ class NetsoulServer
 
   def get_opt
     if @args.length > 0
-      @args.each do |opt|
-        case opt
+      while opt = @args.shift do
+      	case opt
         when "--help", "-help", "-h", "-H"
           NetsoulServer.print_help
+          exit
+        when "--config", "-config", "-c", "-C"
+        	@config_file = @args.shift||""
+        	raise NSError.new("Config file does not exists") if not FileTest.exist?(@config_file)
         else
-        	$stdout.puts "Unknwon paramater : #{opt}"
+          $stderr.puts "Unknwon paramater : #{opt}"
         end
       end
-      exit
+      
     end
   end
 
   def self.print_help
-  	$stdout.puts
+    $stdout.puts
     $stdout.puts ' _____       _            _____             _        _____                          '
     $stdout.puts '|  __ \     | |          / ____|           | |      / ____|                         '
     $stdout.puts '| |__) |   _| |__  _   _| (___   ___  _   _| |_____| (___   ___ _ ____   _____ _ __ '
@@ -194,7 +203,8 @@ class NetsoulServer
     $stdout.puts "-You can run the script like this : \"ruby rubysoul-server.rb\" or \"./rubysoul-server.rb\""
     $stdout.puts
     $stdout.puts "[Commands options]"
-    $stdout.puts "  --help, -help, -h, -H : Print this help message."
+    $stdout.puts "  --help, -help, -h, -H     : Print this help message."
+    $stdout.puts "  --config, -config, -c, -C : Define config file."
     $stdout.puts
     $stdout.puts '*************************************************'
     $stdout.puts '* ' + RS_APP_NAME + ' V' + RS_VERSION + '                       *'

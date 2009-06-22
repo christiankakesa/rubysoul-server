@@ -1,7 +1,19 @@
+PACKAGE (0.7.05) RELEASED; urgency=low
+
+  * Add the -c parameter to define config file location.
+
+ -- Christian KAKESA <christian@maison>  Thu, 22 Jun 2009 23:36:14 +0100
+
+PACKAGE (0.7.04) RELEASED; urgency=low
+
+  * Throw exception in parse command loop in order to fix server disconnection.
+  * ...
+
+ -- Christian KAKESA <christian@maison>  Thu, 15 Jun 2009 23:36:14 +0100
+
 PACKAGE (0.7.03) RELEASED; urgency=low
 
-  * Dynamically create config.yml file if not exist.
-  * ...
+  * The config.yml file is now passed in parameter.
 
  -- Christian KAKESA <christian@maison>  Thu, 15 Jun 2009 23:36:14 +0100
 
