@@ -13,7 +13,7 @@ rescue NSError, NSAuthError
   exit
 rescue
   $stderr.puts "[#{Time.now.to_s}] Error: #{$!}"
-  Kernel.sleep(10)
+  # Kernel.sleep(10)
   retry
 end
 
