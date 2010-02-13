@@ -75,7 +75,7 @@ module Reactor
       process_timers
       update_list(@selectables[:read])
       update_list(@selectables[:write])
-      res = IO.select(@selectables[:read][:io_list], @selectables[:write][:io_list], nil, 0.005)
+      res = IO.select(@selectables[:read][:io_list], @selectables[:write][:io_list], nil, 1)
       if res
         fire_ios(:read, res[0])
         fire_ios(:write, res[1])
