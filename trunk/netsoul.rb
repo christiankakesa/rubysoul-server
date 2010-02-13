@@ -31,22 +31,27 @@ class NetsoulServer
     trap('INT'  ) { exit }
     trap('TERM' ) { exit }
     trap('KILL' ) { exit }
-    start()
+    begin
+    	start()
+    rescue NSError, NSAuthError
+    	$stdout.puts "#{$!}" if $DEBUG
+    	exit
+    rescue
+    	$stdout.puts "#{$!}" if $DEBUG
+    	retry
+    end
   end
 
   def start
-    connect(@data[:login].to_s, @data[:socks_password].to_s, RS_APP_NAME + " " + RS_VERSION)
+    connect(@data[:login].to_s, @data[:socks_password].to_s, "#{RS_APP_NAME} #{RS_VERSION}")
     $stdout.puts "#{RS_APP_NAME} #{RS_VERSION} Started..." if $DEBUG
     reactor = Reactor::Base.new
     reactor.attach(:read, @socket) do
-      if (@socket.closed? || @socket.nil?)
-        raise "Socket is closed or not available"
-      end
       begin
-        parse_cmd()
-      rescue
-        raise "Error in parse command. #{$!}"
-      end
+    	parse_cmd()
+	  rescue
+		raise "#{$!}"
+	  end
     end
     reactor.run()
   end
@@ -61,7 +66,7 @@ class NetsoulServer
     @data[:iptable].each do |key, val|
       res = client_host.match(/^#{val}/)
       if res != nil
-        res = "#{key}".chomp
+        res = key.to_s.chomp
         location = res
         user_from = res
         break
